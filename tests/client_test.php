@@ -72,4 +72,34 @@ class client_test extends advanced_testcase {
         $this->assertFalse($rescheck['success']);
         $this->assertEquals('api_not_configured', $rescheck['error']);
     }
+
+    /**
+     * Test simulation test mode.
+     */
+    public function test_test_mode(): void {
+        $this->resetAfterTest(true);
+
+        set_config('test_mode', 1, 'local_telegramotp');
+        set_config('test_dummy_code', '654321', 'local_telegramotp');
+
+        $client = new client('');
+        $this->assertTrue($client->is_configured());
+        $this->assertTrue($client->is_test_mode());
+        $this->assertEquals('654321', $client->get_test_dummy_code());
+
+        // Send OTP in test mode.
+        $sendres = $client->send_verification_message('+966501234567');
+        $this->assertTrue($sendres['success']);
+        $this->assertStringStartsWith('mock_req_', $sendres['request_id']);
+
+        // Check verification status with wrong code.
+        $badcheck = $client->check_verification_status($sendres['request_id'], '000000');
+        $this->assertFalse($badcheck['success']);
+        $this->assertEquals('code_invalid', $badcheck['status']);
+
+        // Check verification status with correct dummy code.
+        $goodcheck = $client->check_verification_status($sendres['request_id'], '654321');
+        $this->assertTrue($goodcheck['success']);
+        $this->assertEquals('code_valid', $goodcheck['status']);
+    }
 }

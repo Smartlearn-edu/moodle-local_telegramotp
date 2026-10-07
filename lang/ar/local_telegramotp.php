@@ -48,6 +48,10 @@ $string['login_here'] = 'سجل الدخول من هنا';
 // Admin settings strings.
 $string['setting_enabled'] = 'تفعيل التسجيل عبر تيليجرام';
 $string['setting_enabled_desc'] = 'تفعيل تسجيل المستخدمين الجدد مع التحقق الفوري المتزامن عبر بوابة تيليجرام.';
+$string['setting_test_mode'] = 'وضع التجربة والتطوير (Test mode)';
+$string['setting_test_mode_desc'] = 'محاكاة إرسال الرمز بدون الاتصال ببوابة تيليجرام أو استهلاك الرصيد. مفيد للاختبار والتجربة.';
+$string['setting_test_dummy_code'] = 'رمز التحقق التجريبي';
+$string['setting_test_dummy_code_desc'] = 'الرمز التجريبي الثابت المقبول في وضع الاختبار (الافتراضي: 123456).';
 $string['setting_api_token'] = 'رمز الوصول لبوابة تيليجرام (API Token)';
 $string['setting_api_token_desc'] = 'أدخل رمز الـ API الذي حصلت عليه من موقع gateway.telegram.org';
 $string['setting_code_length'] = 'طول رمز التحقق';
@@ -92,6 +96,7 @@ $string['error_invalid_action'] = 'إجراء غير صالح.';
 
 // Success notifications.
 $string['success_code_sent'] = 'تم إرسال رمز التحقق إلى حسابك في تطبيق تيليجرام.';
+$string['success_code_sent_test'] = 'تم إرسال الرمز (وضع التجربة مفعّل: استخدم الرمز {$a}).';
 $string['success_registered'] = 'تم إنشاء الحساب بنجاح! جارٍ تسجيل الدخول...';
 
 // Privacy API strings.

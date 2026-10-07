@@ -35,6 +35,23 @@ if ($hassiteconfig) {
         1
     ));
 
+    // Development / test simulation mode.
+    $settings->add(new admin_setting_configcheckbox(
+        'local_telegramotp/test_mode',
+        get_string('setting_test_mode', 'local_telegramotp'),
+        get_string('setting_test_mode_desc', 'local_telegramotp'),
+        0
+    ));
+
+    // Test verification code.
+    $settings->add(new admin_setting_configtext(
+        'local_telegramotp/test_dummy_code',
+        get_string('setting_test_dummy_code', 'local_telegramotp'),
+        get_string('setting_test_dummy_code_desc', 'local_telegramotp'),
+        '123456',
+        PARAM_NOTAGS
+    ));
+
     // Telegram Gateway API Token.
     $settings->add(new admin_setting_configpasswordunmask(
         'local_telegramotp/api_token',

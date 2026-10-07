@@ -48,6 +48,10 @@ $string['login_here'] = 'Log in here';
 // Admin settings strings.
 $string['setting_enabled'] = 'Enable Telegram registration';
 $string['setting_enabled_desc'] = 'Enable phone-first registration with synchronous Telegram OTP verification.';
+$string['setting_test_mode'] = 'Development / test mode';
+$string['setting_test_mode_desc'] = 'Simulate Telegram OTP without calling the live Telegram API or consuming balance. Useful for testing.';
+$string['setting_test_dummy_code'] = 'Test verification code';
+$string['setting_test_dummy_code_desc'] = 'The static dummy verification code accepted in test mode (default: 123456).';
 $string['setting_api_token'] = 'Telegram Gateway API token';
 $string['setting_api_token_desc'] = 'Enter your API token generated from gateway.telegram.org';
 $string['setting_code_length'] = 'Verification code length';
@@ -92,6 +96,7 @@ $string['error_invalid_action'] = 'Invalid request action.';
 
 // Success notifications.
 $string['success_code_sent'] = 'Verification code sent to your Telegram account.';
+$string['success_code_sent_test'] = 'Verification code sent (Test mode active: enter code {$a}).';
 $string['success_registered'] = 'Account created successfully! Logging you in...';
 
 // Privacy API strings.

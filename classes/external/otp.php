@@ -185,11 +185,15 @@ class otp extends external_api {
 
         $configuredcooldown = (int) get_config('local_telegramotp', 'cooldown') ?: manager::DEFAULT_COOLDOWN;
 
+        $msg = $client->is_test_mode()
+            ? get_string('success_code_sent_test', 'local_telegramotp', $client->get_test_dummy_code())
+            : get_string('success_code_sent', 'local_telegramotp');
+
         return [
             'success'    => true,
             'request_id' => $requestid,
             'cooldown'   => $configuredcooldown,
-            'message'    => get_string('success_code_sent', 'local_telegramotp'),
+            'message'    => $msg,
         ];
     }
 

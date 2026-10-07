@@ -46,12 +46,14 @@ A dedicated, lightweight Moodle local plugin that provides **phone-first user re
 Go to **Site administration → Plugins → Local plugins → Telegram OTP registration**:
 
 1. **Enable Telegram registration**: Turn on to activate the registration page.
-2. **Telegram Gateway API token**: Paste the Bearer token generated from your [Telegram Gateway dashboard](https://gateway.telegram.org).
-3. **Verification code length**: Choose between 4, 6 (recommended), or 8 digits.
-4. **Code validity (TTL)**: Number of seconds the code remains valid (default: 300 seconds).
-5. **Resend cooldown**: Number of seconds before a user can request another code (default: 60 seconds).
-6. **Max requests per IP / Phone**: Configure security rate limit thresholds.
-7. **Default country**: Select the default dialing prefix (e.g., Saudi Arabia `+966`, Egypt `+20`, UAE `+971`).
+2. **Development / test mode**: Turn on to simulate OTP verification without connecting to live Telegram or requiring a funded account.
+3. **Test verification code**: The static code accepted when test mode is active (default: `123456`).
+4. **Telegram Gateway API token**: Paste the Bearer token generated from your [Telegram Gateway dashboard](https://gateway.telegram.org) (only needed for live production).
+5. **Verification code length**: Choose between 4, 6 (recommended), or 8 digits.
+6. **Code validity (TTL)**: Number of seconds the code remains valid (default: 300 seconds).
+7. **Resend cooldown**: Number of seconds before a user can request another code (default: 60 seconds).
+8. **Max requests per IP / Phone**: Configure security rate limit thresholds.
+9. **Default country**: Select the default dialing prefix (e.g., Saudi Arabia `+966`, Egypt `+20`, UAE `+971`).
 
 ---
 

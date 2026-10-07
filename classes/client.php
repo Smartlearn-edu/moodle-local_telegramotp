@@ -47,12 +47,31 @@ class client {
     }
 
     /**
-     * Check if the API client is configured with a token.
+     * Check if test / simulation mode is enabled.
      *
-     * @return bool True if a non-empty token exists.
+     * @return bool True if test mode is active.
+     */
+    public function is_test_mode(): bool {
+        return (bool) get_config('local_telegramotp', 'test_mode');
+    }
+
+    /**
+     * Get the configured dummy test code.
+     *
+     * @return string Dummy code (default: 123456).
+     */
+    public function get_test_dummy_code(): string {
+        $dummy = (string) get_config('local_telegramotp', 'test_dummy_code');
+        return $dummy !== '' ? $dummy : '123456';
+    }
+
+    /**
+     * Check if the API client is configured with a token or running in test mode.
+     *
+     * @return bool True if configured or test mode active.
      */
     public function is_configured(): bool {
-        return !empty(trim($this->token));
+        return $this->is_test_mode() || !empty(trim($this->token));
     }
 
     /**
@@ -64,6 +83,18 @@ class client {
      * @return array Standard result array [success => bool, request_id => string, error => string].
      */
     public function send_verification_message(string $phone, int $codelength = 6, int $ttl = 300): array {
+        if ($this->is_test_mode()) {
+            $mockid = 'mock_req_' . substr(md5($phone . microtime()), 0, 16);
+            return [
+                'success'    => true,
+                'request_id' => $mockid,
+                'data'       => [
+                    'request_id' => $mockid,
+                    'mock'       => true,
+                ],
+            ];
+        }
+
         if (!$this->is_configured()) {
             return [
                 'success' => false,
@@ -108,6 +139,21 @@ class client {
      * @return array Result array [success => bool, status => string, error => string].
      */
     public function check_verification_status(string $requestid, string $code): array {
+        if ($this->is_test_mode() || str_starts_with($requestid, 'mock_req_')) {
+            $expected = $this->get_test_dummy_code();
+            if ($code === $expected) {
+                return [
+                    'success' => true,
+                    'status'  => 'code_valid',
+                ];
+            }
+            return [
+                'success' => false,
+                'status'  => 'code_invalid',
+                'error'   => 'invalid_code',
+            ];
+        }
+
         if (!$this->is_configured()) {
             return [
                 'success' => false,
