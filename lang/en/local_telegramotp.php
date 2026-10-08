@@ -66,6 +66,31 @@ $string['setting_max_phone_attempts'] = 'Max requests per phone per 15 min';
 $string['setting_max_phone_attempts_desc'] = 'Maximum number of OTP requests allowed per phone number in 15 minutes.';
 $string['setting_default_country'] = 'Default country';
 $string['setting_default_country_desc'] = 'Default dialing code selected in the registration phone input.';
+$string['setting_verification_provider'] = 'Verification provider';
+$string['setting_verification_provider_desc'] = 'Choose how Telegram verification is delivered to users: Hybrid (Gateway OTP with Free Bot Fallback), Free Bot Only (zero cost), or Commercial Gateway Only.';
+$string['provider_hybrid'] = 'Hybrid: Gateway API with Free Bot fallback (Recommended)';
+$string['provider_bot'] = 'Telegram Bot Webhook (100% Free - Zero API cost)';
+$string['provider_gateway'] = 'Telegram Gateway API only (Commercial)';
+$string['setting_bot_username'] = 'Telegram bot username';
+$string['setting_bot_username_desc'] = 'Username of your Telegram bot (e.g. MyMoodleBot, without @). If left blank, local_telegramotp automatically uses the bot configured in message_telegram.';
+$string['setting_bot_security'] = 'Bot verification security mode';
+$string['setting_bot_security_desc'] = 'Fast mode verifies and creates account upon the student clicking /start in Telegram. Strict mode requires the student to tap "Share phone number" in Telegram to ensure their Telegram account phone matches their registration form.';
+$string['security_fast'] = 'Fast (1-Click Instant /start Verification)';
+$string['security_strict'] = 'Strict (Requires Contact / Phone Verification in Bot)';
+
+// Bot verification UI and interaction strings.
+$string['verify_with_bot'] = 'Verify via Telegram Bot (Free)';
+$string['verify_with_bot_help'] = 'No credits needed! Click below to verify instantly with our official Telegram Bot.';
+$string['or_verify_with_bot'] = 'Or verify for free using our Telegram Bot';
+$string['or_use_code'] = 'Or enter SMS / Telegram verification code';
+$string['open_telegram_bot'] = 'Open Telegram Bot & Start';
+$string['waiting_for_bot_verification'] = 'Waiting for Telegram verification...';
+$string['bot_verification_instructions'] = '1. Click the button below to open Telegram.<br>2. Tap <strong>START</strong> in the bot chat.<br>3. This window will automatically log you in.';
+$string['bot_not_configured'] = 'Telegram Bot is not configured. Please contact the administrator.';
+$string['error_bot_phone_mismatch'] = 'The phone number of your Telegram account does not match the number entered in the registration form.';
+$string['telegram_welcome_verified'] = '🎉 Welcome {$a->name}! Your account on {$a->site} has been verified successfully. Your browser will log you in automatically.';
+$string['telegram_prompt_share_reg'] = '👋 Welcome {$a->name}!\nTo verify your registration for phone number {$a->phone}, please tap the button below to share your phone contact:';
+$string['share_phone_for_reg'] = '📱 Verify My Phone Number';
 
 // Validation and error messages.
 $string['error_missing_firstname'] = 'Please enter your first name.';

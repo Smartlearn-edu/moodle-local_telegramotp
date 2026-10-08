@@ -344,4 +344,136 @@ class otp extends external_api {
             'message'      => new external_value(PARAM_TEXT, 'Human readable status message'),
         ]);
     }
+
+    /**
+     * Parameters for start_bot_verification.
+     *
+     * @return external_function_parameters
+     */
+    public static function start_bot_verification_parameters(): external_function_parameters {
+        return new external_function_parameters([
+            'firstname' => new external_value(PARAM_NOTAGS, 'User first name'),
+            'lastname'  => new external_value(PARAM_NOTAGS, 'User last name'),
+            'email'     => new external_value(PARAM_EMAIL, 'User email address'),
+            'password'  => new external_value(PARAM_RAW, 'User password'),
+            'phone'     => new external_value(PARAM_NOTAGS, 'User raw phone number'),
+            'username'  => new external_value(PARAM_RAW, 'Optional custom username', VALUE_DEFAULT, ''),
+            'honeypot'  => new external_value(PARAM_RAW, 'Anti-spam honeypot field', VALUE_DEFAULT, ''),
+        ]);
+    }
+
+    /**
+     * Initiate bot verification and obtain Telegram deep link.
+     *
+     * @param string $firstname User first name.
+     * @param string $lastname User last name.
+     * @param string $email User email.
+     * @param string $password User password.
+     * @param string $phone User phone number.
+     * @param string $username User username.
+     * @param string $honeypot Anti-spam honeypot.
+     * @return array Result array.
+     */
+    public static function start_bot_verification(
+        string $firstname,
+        string $lastname,
+        string $email,
+        string $password,
+        string $phone,
+        string $username = '',
+        string $honeypot = ''
+    ): array {
+        $params = self::validate_parameters(self::start_bot_verification_parameters(), [
+            'firstname' => $firstname,
+            'lastname'  => $lastname,
+            'email'     => $email,
+            'password'  => $password,
+            'phone'     => $phone,
+            'username'  => $username,
+            'honeypot'  => $honeypot,
+        ]);
+
+        if (!empty($params['honeypot'])) {
+            return [
+                'success'      => false,
+                'token'        => '',
+                'bot_username' => '',
+                'deeplink'     => '',
+                'message'      => get_string('error_spam_detected', 'local_telegramotp'),
+            ];
+        }
+
+        $enabled = (bool) get_config('local_telegramotp', 'enabled');
+        if (!$enabled) {
+            return [
+                'success'      => false,
+                'token'        => '',
+                'bot_username' => '',
+                'deeplink'     => '',
+                'message'      => get_string('error_registration_disabled', 'local_telegramotp'),
+            ];
+        }
+
+        return manager::create_bot_verification_token($params);
+    }
+
+    /**
+     * Return structure for start_bot_verification.
+     *
+     * @return external_single_structure
+     */
+    public static function start_bot_verification_returns(): external_single_structure {
+        return new external_single_structure([
+            'success'      => new external_value(PARAM_BOOL, 'Whether bot verification was initiated'),
+            'token'        => new external_value(PARAM_RAW, 'Bot verification token'),
+            'bot_username' => new external_value(PARAM_RAW, 'Telegram bot username'),
+            'deeplink'     => new external_value(PARAM_RAW, 'Telegram deep link URL'),
+            'message'      => new external_value(PARAM_TEXT, 'Status or instructions message'),
+        ]);
+    }
+
+    /**
+     * Parameters for check_bot_verification.
+     *
+     * @return external_function_parameters
+     */
+    public static function check_bot_verification_parameters(): external_function_parameters {
+        return new external_function_parameters([
+            'token' => new external_value(PARAM_RAW, 'Bot verification token'),
+        ]);
+    }
+
+    /**
+     * Check verification status of a bot token.
+     *
+     * @param string $token Bot verification token.
+     * @return array Result array.
+     */
+    public static function check_bot_verification(string $token): array {
+        $params = self::validate_parameters(self::check_bot_verification_parameters(), [
+            'token' => $token,
+        ]);
+
+        $status = manager::check_bot_verification_status($params['token']);
+        return [
+            'success'      => (bool)($status['success'] ?? false),
+            'verified'     => (bool)($status['verified'] ?? false),
+            'redirect_url' => (string)($status['redirect_url'] ?? ''),
+            'message'      => (string)($status['message'] ?? ''),
+        ];
+    }
+
+    /**
+     * Return structure for check_bot_verification.
+     *
+     * @return external_single_structure
+     */
+    public static function check_bot_verification_returns(): external_single_structure {
+        return new external_single_structure([
+            'success'      => new external_value(PARAM_BOOL, 'Whether request was processed'),
+            'verified'     => new external_value(PARAM_BOOL, 'Whether user was verified and logged in'),
+            'redirect_url' => new external_value(PARAM_URL, 'Redirect URL if verified', VALUE_DEFAULT, ''),
+            'message'      => new external_value(PARAM_TEXT, 'Status message', VALUE_DEFAULT, ''),
+        ]);
+    }
 }

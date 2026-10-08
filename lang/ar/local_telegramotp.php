@@ -66,6 +66,31 @@ $string['setting_max_phone_attempts'] = 'الحد الأقصى للطلبات ل
 $string['setting_max_phone_attempts_desc'] = 'الحد الأقصى لطلبات التحقق المسموح بها لرقم هاتف واحد خلال 15 دقيقة.';
 $string['setting_default_country'] = 'الدولة الافتراضية';
 $string['setting_default_country_desc'] = 'مفتاح الدولة الافتراضي المحدد في حقل إدخال رقم الهاتف.';
+$string['setting_verification_provider'] = 'مزود التحقق عبر تيليجرام';
+$string['setting_verification_provider_desc'] = 'اختر طريقة التحقق: وضع هجين (رمز بوابة تيليجرام مع بديل بوت مجاني)، أو بوت تيليجرام فقط (مجاني 100% بدون تكلفة)، أو بوابة تيليجرام فقط.';
+$string['provider_hybrid'] = 'هجين: رمز التحقق عبر البوابة مع بديل البوت المجاني (موصى به)';
+$string['provider_bot'] = 'بوت تيليجرام ويب هوك (مجاني 100% - بدون تكاليف رصيد)';
+$string['provider_gateway'] = 'بوابة تيليجرام فقط (مدفوع)';
+$string['setting_bot_username'] = 'اسم مستخدم بوت تيليجرام';
+$string['setting_bot_username_desc'] = 'اسم مستخدم البوت في تيليجرام (بدون @). إذا ترك فارغاً سيتم استخدام البوت المهيأ في إضافة رسائل تيليجرام (message_telegram) تلقائياً.';
+$string['setting_bot_security'] = 'مستوى أمان التحقق عبر البوت';
+$string['setting_bot_security_desc'] = 'الوضع السريع يؤكد الحساب فور الضغط على /start في تيليجرام (نقرة واحدة). الوضع الدقيق يطلب من المستخدم مشاركة جهة اتصاله للتأكد من مطابقة رقم تيليجرام مع الرقم المدخل في النموذج.';
+$string['security_fast'] = 'سريع (تأكيد فوري بنقرة واحدة عبر /start)';
+$string['security_strict'] = 'دقيق (يتطلب مشاركة رقم الهاتف من داخل البوت)';
+
+// Bot verification UI and interaction strings.
+$string['verify_with_bot'] = 'التحقق عبر بوت تيليجرام (مجاناً)';
+$string['verify_with_bot_help'] = 'بدون أي تكاليف أو رصيد! انقر أدناه للتحقق الفوري عبر بوت تيليجرام الرسمي.';
+$string['or_verify_with_bot'] = 'أو تحقق مجاناً عبر بوت تيليجرام';
+$string['or_use_code'] = 'أو أدخل رمز التحقق المرسل';
+$string['open_telegram_bot'] = 'فتح بوت تيليجرام والبدء';
+$string['waiting_for_bot_verification'] = 'بانتظار تأكيدك داخل تطبيق تيليجرام...';
+$string['bot_verification_instructions'] = '1. انقر على الزر أدناه لفتح تطبيق تيليجرام.<br>2. اضغط على <strong>START (بدء)</strong> في محادثة البوت.<br>3. سيتم تسجيل دخولك هنا تلقائياً خلال لحظات.';
+$string['bot_not_configured'] = 'لم يتم ضبط بوت تيليجرام بعد، يرجى التواصل مع إدارة الموقع.';
+$string['error_bot_phone_mismatch'] = 'رقم الهاتف لحساب تيليجرام الخاص بك لا يطابق الرقم المدخل في نموذج التسجيل.';
+$string['telegram_welcome_verified'] = '🎉 أهلاً بك يا {$a->name}! تم تأكيد حسابك في {$a->site} بنجاح. سيتم تحويلك إلى لوحة التحكم تلقائياً.';
+$string['telegram_prompt_share_reg'] = '👋 أهلاً بك يا {$a->name}!\nلتأكيد تسجيلك لرقم الهاتف {$a->phone}، يرجى النقر على الزر أدناه لمشاركة جهة الاتصال:';
+$string['share_phone_for_reg'] = '📱 تأكيد رقم جوالي';
 
 // Validation and error messages.
 $string['error_missing_firstname'] = 'يرجى إدخال الاسم الأول.';

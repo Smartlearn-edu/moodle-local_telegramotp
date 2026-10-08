@@ -35,6 +35,42 @@ if ($hassiteconfig) {
         1
     ));
 
+    // Verification provider: hybrid, bot, gateway.
+    $provideroptions = [
+        'hybrid'  => get_string('provider_hybrid', 'local_telegramotp'),
+        'bot'     => get_string('provider_bot', 'local_telegramotp'),
+        'gateway' => get_string('provider_gateway', 'local_telegramotp'),
+    ];
+    $settings->add(new admin_setting_configselect(
+        'local_telegramotp/verification_provider',
+        get_string('setting_verification_provider', 'local_telegramotp'),
+        get_string('setting_verification_provider_desc', 'local_telegramotp'),
+        'hybrid',
+        $provideroptions
+    ));
+
+    // Telegram Bot Username override (optional).
+    $settings->add(new admin_setting_configtext(
+        'local_telegramotp/bot_username',
+        get_string('setting_bot_username', 'local_telegramotp'),
+        get_string('setting_bot_username_desc', 'local_telegramotp'),
+        '',
+        PARAM_NOTAGS
+    ));
+
+    // Bot verification security level: fast vs strict.
+    $securityoptions = [
+        'fast'   => get_string('security_fast', 'local_telegramotp'),
+        'strict' => get_string('security_strict', 'local_telegramotp'),
+    ];
+    $settings->add(new admin_setting_configselect(
+        'local_telegramotp/bot_verification_security',
+        get_string('setting_bot_security', 'local_telegramotp'),
+        get_string('setting_bot_security_desc', 'local_telegramotp'),
+        'fast',
+        $securityoptions
+    ));
+
     // Development / test simulation mode.
     $settings->add(new admin_setting_configcheckbox(
         'local_telegramotp/test_mode',

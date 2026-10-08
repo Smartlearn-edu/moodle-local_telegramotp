@@ -80,6 +80,34 @@ try {
             echo json_encode($result);
             break;
 
+        case 'start_bot_verification':
+            $firstname = optional_param('firstname', '', PARAM_NOTAGS);
+            $lastname  = optional_param('lastname', '', PARAM_NOTAGS);
+            $email     = optional_param('email', '', PARAM_EMAIL);
+            $password  = optional_param('password', '', PARAM_RAW);
+            $phone     = optional_param('phone', '', PARAM_NOTAGS);
+            $username  = optional_param('username', '', PARAM_RAW);
+            $honeypot  = optional_param('website', '', PARAM_RAW);
+
+            $result = \local_telegramotp\external\otp::start_bot_verification(
+                $firstname,
+                $lastname,
+                $email,
+                $password,
+                $phone,
+                $username,
+                $honeypot
+            );
+            echo json_encode($result);
+            break;
+
+        case 'check_bot_verification':
+            $token = required_param('token', PARAM_RAW);
+
+            $result = \local_telegramotp\external\otp::check_bot_verification($token);
+            echo json_encode($result);
+            break;
+
         default:
             echo json_encode([
                 'success' => false,

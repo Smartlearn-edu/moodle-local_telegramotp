@@ -566,4 +566,325 @@ class manager {
 
         return $userrecord;
     }
+
+    /**
+     * Get configured Telegram bot username.
+     *
+     * @return string Bot username without @ symbol.
+     */
+    public static function get_bot_username(): string {
+        $botname = (string) get_config('local_telegramotp', 'bot_username');
+        if (trim($botname) === '') {
+            $botname = (string) get_config('message_telegram', 'sitebotusername');
+        }
+        return ltrim(trim($botname), '@');
+    }
+
+    /**
+     * Create a pending bot verification session and generate deep-link.
+     *
+     * @param array $formdata User registration inputs.
+     * @return array [success => bool, token => string, deeplink => string, message => string]
+     */
+    public static function create_bot_verification_token(array $formdata): array {
+        global $DB, $CFG;
+        require_once($CFG->libdir . '/authlib.php');
+
+        $validation = self::validate_registration_data($formdata);
+        if (!$validation['valid']) {
+            $firsterror = reset($validation['errors']);
+            return [
+                'success'  => false,
+                'token'    => '',
+                'deeplink' => '',
+                'message'  => $firsterror,
+            ];
+        }
+
+        $botusername = self::get_bot_username();
+        if ($botusername === '') {
+            return [
+                'success'  => false,
+                'token'    => '',
+                'deeplink' => '',
+                'message'  => get_string('bot_not_configured', 'local_telegramotp'),
+            ];
+        }
+
+        $normalizedphone = $validation['normalized_phone'];
+        $clientip = self::get_client_ip();
+
+        // Check rate limits.
+        $ipcheck = self::check_ip_rate_limit($clientip);
+        if (!$ipcheck['allowed']) {
+            return [
+                'success'  => false,
+                'token'    => '',
+                'deeplink' => '',
+                'message'  => get_string('error_rate_limit_ip', 'local_telegramotp'),
+            ];
+        }
+
+        $phonecheck = self::check_phone_rate_limit($normalizedphone);
+        if (!$phonecheck['allowed']) {
+            return [
+                'success'  => false,
+                'token'    => '',
+                'deeplink' => '',
+                'message'  => get_string('error_rate_limit_phone', 'local_telegramotp'),
+            ];
+        }
+
+        // Generate token: 32 hex chars prefixed with reg_.
+        $token = 'reg_' . bin2hex(random_bytes(16));
+
+        $payload = [
+            'firstname' => trim($formdata['firstname']),
+            'lastname'  => trim($formdata['lastname']),
+            'email'     => trim($formdata['email']),
+            'phone'     => $normalizedphone,
+            'username'  => trim($formdata['username'] ?? ''),
+            'password'  => hash_internal_user_password($formdata['password']),
+            'country'   => (string) get_config('local_telegramotp', 'default_country') ?: 'SA',
+        ];
+
+        $record = new stdClass();
+        $record->phone        = $normalizedphone;
+        $record->email        = trim($formdata['email']);
+        $record->request_id   = $token;
+        $record->ip_address   = $clientip;
+        $record->status       = 'pending';
+        $record->attempts     = 0;
+        $record->reg_data     = json_encode($payload);
+        $record->timecreated  = time();
+        $record->timemodified = time();
+
+        $DB->insert_record(self::TABLE_REQUESTS, $record);
+
+        $deeplink = 'https://t.me/' . $botusername . '?start=' . $token;
+
+        return [
+            'success'      => true,
+            'token'        => $token,
+            'bot_username' => $botusername,
+            'deeplink'     => $deeplink,
+            'message'      => get_string('verify_with_bot_help', 'local_telegramotp'),
+        ];
+    }
+
+    /**
+     * Verify a bot token received via Telegram webhook and provision user.
+     *
+     * @param string $token Token from /start command (reg_...).
+     * @param int $chatid Telegram chat ID.
+     * @param string|null $sharedphone Shared contact phone if available.
+     * @return array [success => bool, user => ?stdClass, need_contact => ?bool, error => ?string]
+     */
+    public static function verify_bot_token(string $token, int $chatid, ?string $sharedphone = null): array {
+        global $DB;
+
+        $record = $DB->get_record(self::TABLE_REQUESTS, ['request_id' => $token]);
+        if (!$record) {
+            return [
+                'success' => false,
+                'error'   => 'not_found',
+                'message' => get_string('error_invalid_request', 'local_telegramotp'),
+            ];
+        }
+
+        if ($record->status === 'verified') {
+            $regdata = json_decode((string)$record->reg_data, true);
+            $userid = $regdata['userid'] ?? null;
+            $user = $userid ? $DB->get_record('user', ['id' => $userid, 'deleted' => 0]) : null;
+            return [
+                'success' => true,
+                'user'    => $user,
+            ];
+        }
+
+        if ($record->status !== 'pending') {
+            return [
+                'success' => false,
+                'error'   => 'invalid_status',
+                'message' => get_string('error_invalid_request', 'local_telegramotp'),
+            ];
+        }
+
+        // Check expiration (15 minutes).
+        if ((time() - (int)$record->timecreated) > (15 * MINSECS)) {
+            $record->status = 'expired';
+            $record->timemodified = time();
+            $DB->update_record(self::TABLE_REQUESTS, $record);
+            return [
+                'success' => false,
+                'error'   => 'expired',
+                'message' => get_string('error_code_expired', 'local_telegramotp'),
+            ];
+        }
+
+        $regdata = json_decode((string)$record->reg_data, true);
+        if (empty($regdata)) {
+            return [
+                'success' => false,
+                'error'   => 'invalid_payload',
+                'message' => get_string('error_invalid_request', 'local_telegramotp'),
+            ];
+        }
+
+        // Check strict security mode if phone sharing is required.
+        $security = (string) get_config('local_telegramotp', 'bot_verification_security');
+        if ($security === 'strict') {
+            if ($sharedphone === null) {
+                return [
+                    'success'      => false,
+                    'need_contact' => true,
+                    'phone'        => $record->phone,
+                    'name'         => $regdata['firstname'] . ' ' . $regdata['lastname'],
+                ];
+            }
+
+            // Normalize and verify match.
+            $cleanrecordphone = preg_replace('/[^\d]/', '', $record->phone);
+            $cleansharedphone = preg_replace('/[^\d]/', '', $sharedphone);
+
+            if ($cleanrecordphone !== $cleansharedphone) {
+                return [
+                    'success' => false,
+                    'error'   => 'phone_mismatch',
+                    'message' => get_string('error_bot_phone_mismatch', 'local_telegramotp'),
+                ];
+            }
+        }
+
+        // Create the user account and link telegram chat id.
+        $user = self::create_user_from_bot($regdata, $chatid);
+
+        $regdata['userid'] = (int)$user->id;
+        $record->status = 'verified';
+        $record->reg_data = json_encode($regdata);
+        $record->timemodified = time();
+        $DB->update_record(self::TABLE_REQUESTS, $record);
+
+        return [
+            'success' => true,
+            'user'    => $user,
+        ];
+    }
+
+    /**
+     * Provision Moodle user from bot registration data and link Telegram chat ID.
+     *
+     * @param array $data Registration payload.
+     * @param int $chatid Telegram chat ID.
+     * @return stdClass Created or matched user record.
+     */
+    public static function create_user_from_bot(array $data, int $chatid): stdClass {
+        global $CFG, $DB;
+        require_once($CFG->dirroot . '/user/lib.php');
+
+        $email = trim($data['email']);
+        $phone = trim($data['phone']);
+
+        // Check if user already exists (e.g. concurrent webhook call).
+        $existing = $DB->get_record('user', ['email' => $email, 'deleted' => 0]);
+        if ($existing) {
+            self::save_user_phone((int)$existing->id, $phone);
+            set_user_preference('message_processor_telegram_chatid', (string)$chatid, (int)$existing->id);
+            return $existing;
+        }
+
+        $username = trim($data['username'] ?? '');
+        if ($username === '') {
+            $username = clean_param($email, PARAM_USERNAME);
+            if ($DB->record_exists('user', ['username' => $username, 'deleted' => 0])) {
+                $username = clean_param(str_replace('+', '', $phone), PARAM_USERNAME);
+            }
+        }
+
+        $user = new stdClass();
+        $user->auth         = 'manual';
+        $user->confirmed    = 1;
+        $user->mnethostid   = $CFG->mnet_localhost_id;
+        $user->username     = $username;
+        $user->password     = $data['password']; // Already hashed during token creation.
+        $user->firstname    = trim($data['firstname']);
+        $user->lastname     = trim($data['lastname']);
+        $user->email        = $email;
+        $user->phone1       = $phone;
+        $user->country      = $data['country'] ?? 'SA';
+        $user->lang         = current_language();
+        $user->timecreated  = time();
+        $user->timemodified = time();
+
+        $userid = user_create_user($user, false, false);
+        $user->id = $userid;
+
+        // Save verified phone to custom profile field.
+        self::save_user_phone($userid, $phone);
+
+        // Auto-link chat ID in message_telegram preference so notifications work immediately.
+        set_user_preference('message_processor_telegram_chatid', (string)$chatid, $userid);
+
+        return $DB->get_record('user', ['id' => $userid], '*', MUST_EXIST);
+    }
+
+    /**
+     * Check if a bot verification token has been confirmed via Telegram webhook.
+     * Logs in the user session if verified.
+     *
+     * @param string $token Bot verification token (reg_...).
+     * @return array [success => bool, verified => bool, redirect_url => string]
+     */
+    public static function check_bot_verification_status(string $token): array {
+        global $DB, $CFG;
+        require_once($CFG->libdir . '/authlib.php');
+
+        $record = $DB->get_record(self::TABLE_REQUESTS, ['request_id' => $token]);
+        if (!$record) {
+            return [
+                'success'  => false,
+                'verified' => false,
+                'message'  => get_string('error_invalid_request', 'local_telegramotp'),
+            ];
+        }
+
+        if ($record->status === 'verified') {
+            $regdata = json_decode((string)$record->reg_data, true);
+            $userid = $regdata['userid'] ?? null;
+            if ($userid) {
+                $user = $DB->get_record('user', ['id' => $userid, 'deleted' => 0]);
+                if ($user) {
+                    complete_user_login($user);
+                    return [
+                        'success'      => true,
+                        'verified'     => true,
+                        'redirect_url' => (new \moodle_url('/my/'))->out(false),
+                        'message'      => get_string('success_registered', 'local_telegramotp'),
+                    ];
+                }
+            }
+        }
+
+        if ($record->status === 'pending') {
+            if ((time() - (int)$record->timecreated) > (15 * MINSECS)) {
+                return [
+                    'success'  => false,
+                    'verified' => false,
+                    'expired'  => true,
+                    'message'  => get_string('error_code_expired', 'local_telegramotp'),
+                ];
+            }
+
+            return [
+                'success'  => true,
+                'verified' => false,
+            ];
+        }
+
+        return [
+            'success'  => false,
+            'verified' => false,
+            'message'  => get_string('error_invalid_request', 'local_telegramotp'),
+        ];
+    }
 }

@@ -25,7 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_telegramotp';
-$plugin->version   = 2026100801;
+$plugin->version   = 2026100802;
 $plugin->requires  = 2024100700; // Moodle 4.5+ and 5.x.
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = 'v1.1.0';
+$plugin->release   = 'v1.2.0';

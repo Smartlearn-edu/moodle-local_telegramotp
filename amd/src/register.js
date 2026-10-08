@@ -103,6 +103,7 @@ define([], function() {
         config: null,
         cooldownInterval: null,
         cooldownRemaining: 0,
+        botPollInterval: null,
 
         /**
          * Initialize registration controller.
@@ -124,6 +125,11 @@ define([], function() {
             var btnVerify = document.getElementById('btn-verify-register');
             var btnResend = document.getElementById('btn-resend-otp');
             var btnBack = document.getElementById('btn-back-to-edit');
+            var btnStartBot = document.getElementById('btn-start-bot');
+            var btnChooseBot = document.getElementById('btn-choose-bot');
+            var linkFallbackBot = document.getElementById('link-fallback-to-bot');
+            var btnSwitchToCode = document.getElementById('btn-switch-to-code');
+            var btnBotBack = document.getElementById('btn-bot-back');
 
             if (btnSendOtp) {
                 btnSendOtp.addEventListener('click', function(e) {
@@ -151,6 +157,43 @@ define([], function() {
             if (btnBack) {
                 btnBack.addEventListener('click', function(e) {
                     e.preventDefault();
+                    self.showProfileStep();
+                });
+            }
+
+            if (btnStartBot) {
+                btnStartBot.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    self.startBotVerification(btnStartBot);
+                });
+            }
+
+            if (btnChooseBot) {
+                btnChooseBot.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    self.startBotVerification(btnChooseBot);
+                });
+            }
+
+            if (linkFallbackBot) {
+                linkFallbackBot.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    self.startBotVerification(linkFallbackBot);
+                });
+            }
+
+            if (btnSwitchToCode) {
+                btnSwitchToCode.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    self.stopBotPolling();
+                    self.sendOtp();
+                });
+            }
+
+            if (btnBotBack) {
+                btnBotBack.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    self.stopBotPolling();
                     self.showProfileStep();
                 });
             }
@@ -335,9 +378,178 @@ define([], function() {
          * Switch view back to profile editing step.
          */
         showProfileStep: function() {
-            document.getElementById('step-otp-container').classList.add('d-none');
-            document.getElementById('step-profile-container').classList.remove('d-none');
+            var stepOtp = document.getElementById('step-otp-container');
+            var stepBot = document.getElementById('step-bot-container');
+            var stepProfile = document.getElementById('step-profile-container');
+
+            if (stepOtp) {
+                stepOtp.classList.add('d-none');
+            }
+            if (stepBot) {
+                stepBot.classList.add('d-none');
+            }
+            if (stepProfile) {
+                stepProfile.classList.remove('d-none');
+            }
+            this.stopBotPolling();
             hideAlert();
+        },
+
+        /**
+         * Start Bot Verification flow.
+         *
+         * @param {HTMLButtonElement|null} triggerBtn Button that initiated the action.
+         */
+        startBotVerification: function(triggerBtn) {
+            var self = this;
+            hideAlert();
+
+            var firstname = (document.getElementById('reg-firstname').value || '').trim();
+            var lastname = (document.getElementById('reg-lastname').value || '').trim();
+            var email = (document.getElementById('reg-email').value || '').trim();
+            var password = document.getElementById('reg-password').value || '';
+            var phoneInput = (document.getElementById('reg-phone').value || '').trim();
+            var username = (document.getElementById('reg-username').value || '').trim();
+            var honeypot = (document.getElementById('website').value || '').trim();
+
+            if (!firstname || !lastname || !email || !password || !phoneInput) {
+                showAlert('Please fill in all required fields.', 'danger');
+                return;
+            }
+
+            var fullPhone = this.getFullPhone();
+            if (triggerBtn) {
+                setBtnLoading(triggerBtn, true);
+            }
+
+            var formData = new FormData();
+            formData.append('sesskey', this.config.sesskey);
+            formData.append('action', 'start_bot_verification');
+            formData.append('firstname', firstname);
+            formData.append('lastname', lastname);
+            formData.append('email', email);
+            formData.append('password', password);
+            formData.append('phone', fullPhone);
+            formData.append('username', username);
+            formData.append('website', honeypot);
+
+            fetch(this.config.ajaxurl, {
+                method: 'POST',
+                body: formData,
+            })
+            .then(function(res) {
+                return res.json();
+            })
+            .then(function(data) {
+                if (triggerBtn) {
+                    setBtnLoading(triggerBtn, false);
+                }
+                if (data.success) {
+                    var tokenInput = document.getElementById('telegram-bot-token');
+                    if (tokenInput) {
+                        tokenInput.value = data.token;
+                    }
+                    self.showBotStep(data.deeplink);
+                    self.startBotPolling(data.token);
+                } else {
+                    showAlert(data.message || 'Error starting bot verification', 'danger');
+                }
+            })
+            .catch(function(err) {
+                if (triggerBtn) {
+                    setBtnLoading(triggerBtn, false);
+                }
+                showAlert('Connection error: ' + err.message, 'danger');
+            });
+        },
+
+        /**
+         * Switch view to Telegram Bot verification step.
+         *
+         * @param {string} deeplink URL opening Telegram bot.
+         */
+        showBotStep: function(deeplink) {
+            var stepProfile = document.getElementById('step-profile-container');
+            var stepOtp = document.getElementById('step-otp-container');
+            var stepBot = document.getElementById('step-bot-container');
+            var openBotBtn = document.getElementById('btn-open-telegram-bot');
+
+            if (stepProfile) {
+                stepProfile.classList.add('d-none');
+            }
+            if (stepOtp) {
+                stepOtp.classList.add('d-none');
+            }
+            if (stepBot) {
+                stepBot.classList.remove('d-none');
+            }
+            if (openBotBtn && deeplink) {
+                openBotBtn.href = deeplink;
+            }
+        },
+
+        /**
+         * Stop active Telegram bot polling.
+         */
+        stopBotPolling: function() {
+            if (this.botPollInterval) {
+                clearInterval(this.botPollInterval);
+                this.botPollInterval = null;
+            }
+        },
+
+        /**
+         * Poll server for bot verification confirmation.
+         *
+         * @param {string} token Verification token (reg_...).
+         */
+        startBotPolling: function(token) {
+            var self = this;
+            this.stopBotPolling();
+
+            var pollCount = 0;
+            var maxPolls = 600; // 15 minutes at 1.5s interval.
+
+            this.botPollInterval = setInterval(function() {
+                pollCount++;
+                if (pollCount > maxPolls) {
+                    self.stopBotPolling();
+                    showAlert('Verification timed out. Please try again.', 'warning');
+                    return;
+                }
+
+                var formData = new FormData();
+                formData.append('sesskey', self.config.sesskey);
+                formData.append('action', 'check_bot_verification');
+                formData.append('token', token);
+
+                fetch(self.config.ajaxurl, {
+                    method: 'POST',
+                    body: formData,
+                })
+                .then(function(res) {
+                    return res.json();
+                })
+                .then(function(data) {
+                    if (data.verified) {
+                        self.stopBotPolling();
+                        var waitText = document.getElementById('bot-wait-status');
+                        if (waitText) {
+                            waitText.textContent = data.message || 'Verified! Redirecting...';
+                        }
+                        showAlert(data.message || 'Account verified! Logging in...', 'success');
+                        setTimeout(function() {
+                            window.location.href = data.redirect_url || (M.cfg.wwwroot + '/my/');
+                        }, 800);
+                    } else if (data.expired) {
+                        self.stopBotPolling();
+                        showAlert(data.message || 'Verification expired.', 'danger');
+                    }
+                })
+                .catch(function() {
+                    // Suppress transient poll network blips.
+                });
+            }, 1500);
         },
 
         /**
