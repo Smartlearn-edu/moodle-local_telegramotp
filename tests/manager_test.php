@@ -156,4 +156,58 @@ class manager_test extends advanced_testcase {
         $this->assertFalse($result['valid']);
         $this->assertArrayHasKey('email', $result['errors']);
     }
+
+    /**
+     * Test auto-provisioning custom profile field and idempotency.
+     */
+    public function test_ensure_profile_field(): void {
+        global $DB;
+        $this->resetAfterTest(true);
+
+        $fieldid1 = manager::ensure_profile_field();
+        $this->assertGreaterThan(0, $fieldid1);
+
+        $field = $DB->get_record('user_info_field', ['id' => $fieldid1]);
+        $this->assertNotEmpty($field);
+        $this->assertEquals(manager::PROFILE_FIELD_SHORTNAME, $field->shortname);
+
+        // Verify category was created.
+        $category = $DB->get_record('user_info_category', ['id' => $field->categoryid]);
+        $this->assertNotEmpty($category);
+        $this->assertEquals(manager::PROFILE_CATEGORY_NAME, $category->name);
+
+        // Idempotency: calling again returns identical ID without creating duplicate.
+        $fieldid2 = manager::ensure_profile_field();
+        $this->assertEquals($fieldid1, $fieldid2);
+        $count = $DB->count_records('user_info_field', ['shortname' => manager::PROFILE_FIELD_SHORTNAME]);
+        $this->assertEquals(1, $count);
+    }
+
+    /**
+     * Test saving verified phone number into custom profile field.
+     */
+    public function test_save_user_phone_and_is_phone_registered(): void {
+        global $DB;
+        $this->resetAfterTest(true);
+
+        $user = $this->getDataGenerator()->create_user(['phone1' => '']);
+        $phone = '+966501234567';
+
+        $this->assertFalse(manager::is_phone_registered($phone));
+
+        manager::save_user_phone((int)$user->id, $phone);
+        $this->assertTrue(manager::is_phone_registered($phone));
+
+        // Check user_info_data value.
+        $fieldid = manager::ensure_profile_field();
+        $record = $DB->get_record('user_info_data', ['userid' => $user->id, 'fieldid' => $fieldid]);
+        $this->assertNotEmpty($record);
+        $this->assertEquals($phone, $record->data);
+
+        // Updating phone.
+        $newphone = '+966509876543';
+        manager::save_user_phone((int)$user->id, $newphone);
+        $this->assertTrue(manager::is_phone_registered($newphone));
+        $this->assertFalse(manager::is_phone_registered($phone));
+    }
 }

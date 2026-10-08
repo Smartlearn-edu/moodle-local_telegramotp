@@ -37,6 +37,12 @@ class manager {
     /** @var int Default maximum attempts per request. */
     public const MAX_ATTEMPTS_PER_REQUEST = 5;
 
+    /** @var string Profile field shortname for verified Telegram phone numbers. */
+    public const PROFILE_FIELD_SHORTNAME = 'telegram_phone';
+
+    /** @var string Profile category name for Telegram fields. */
+    public const PROFILE_CATEGORY_NAME = 'Telegram';
+
     /**
      * Normalize Eastern / Arabic-Indic digits to Western ASCII digits.
      *
@@ -295,7 +301,7 @@ class manager {
         $phone = self::normalize_phone($rawphone, $defaultcountry);
         if ($phone === '') {
             $errors['phone'] = get_string('error_invalid_phone', 'local_telegramotp');
-        } else if ($DB->record_exists('user', ['phone1' => $phone, 'deleted' => 0])) {
+        } else if (self::is_phone_registered($phone)) {
             $errors['phone'] = get_string('error_phone_exists', 'local_telegramotp');
         }
 
@@ -400,6 +406,117 @@ class manager {
     }
 
     /**
+     * Ensure that the custom user profile field for Telegram phone numbers exists.
+     *
+     * @return int The profile field ID.
+     */
+    public static function ensure_profile_field(): int {
+        global $DB;
+
+        $field = $DB->get_record('user_info_field', ['shortname' => self::PROFILE_FIELD_SHORTNAME]);
+        if ($field) {
+            return (int) $field->id;
+        }
+
+        // Find or create category.
+        $category = $DB->get_record('user_info_category', ['name' => self::PROFILE_CATEGORY_NAME]);
+        if (!$category) {
+            $maxsort = $DB->get_field_sql('SELECT MAX(sortorder) FROM {user_info_category}') ?: 0;
+            $newcategory = new stdClass();
+            $newcategory->name = self::PROFILE_CATEGORY_NAME;
+            $newcategory->sortorder = ((int)$maxsort) + 1;
+            $categoryid = (int)$DB->insert_record('user_info_category', $newcategory);
+        } else {
+            $categoryid = (int)$category->id;
+        }
+
+        $maxfieldsort = $DB->get_field_sql(
+            'SELECT MAX(sortorder) FROM {user_info_field} WHERE categoryid = :catid',
+            ['catid' => $categoryid]
+        ) ?: 0;
+
+        $newfield = new stdClass();
+        $newfield->shortname = self::PROFILE_FIELD_SHORTNAME;
+        $newfield->name = get_string('profile_field_name', 'local_telegramotp');
+        $newfield->datatype = 'text';
+        $newfield->description = get_string('profile_field_desc', 'local_telegramotp');
+        $newfield->descriptionformat = 1;
+        $newfield->categoryid = $categoryid;
+        $newfield->sortorder = ((int)$maxfieldsort) + 1;
+        $newfield->required = 0;
+        $newfield->locked = 0;
+        $newfield->visible = 2; // PROFILE_VISIBLE_ALL
+        $newfield->forceunique = 0;
+        $newfield->signup = 0;
+        $newfield->defaultdata = '';
+        $newfield->defaultdataformat = 0;
+        $newfield->param1 = 30; // Display size.
+        $newfield->param2 = 50; // Max length.
+        $newfield->param3 = 0;
+        $newfield->param4 = null;
+        $newfield->param5 = null;
+
+        return (int) $DB->insert_record('user_info_field', $newfield);
+    }
+
+    /**
+     * Save the user's verified phone number into their custom profile field.
+     *
+     * @param int $userid Moodle user ID.
+     * @param string $phone Verified E.164 phone number.
+     * @return void
+     */
+    public static function save_user_phone(int $userid, string $phone): void {
+        global $DB;
+
+        $fieldid = self::ensure_profile_field();
+
+        $record = $DB->get_record('user_info_data', ['userid' => $userid, 'fieldid' => $fieldid]);
+        if ($record) {
+            $record->data = $phone;
+            $DB->update_record('user_info_data', $record);
+        } else {
+            $record = new stdClass();
+            $record->userid = $userid;
+            $record->fieldid = $fieldid;
+            $record->data = $phone;
+            $record->dataformat = 0;
+            $DB->insert_record('user_info_data', $record);
+        }
+    }
+
+    /**
+     * Check whether a phone number is already registered in Moodle.
+     * Checks both the custom profile field and standard phone1 field.
+     *
+     * @param string $phone E.164 phone number.
+     * @return bool True if already registered to an active user.
+     */
+    public static function is_phone_registered(string $phone): bool {
+        global $DB;
+
+        // 1. Check custom profile field if present.
+        $sql = "SELECT d.id, d.data
+                  FROM {user_info_data} d
+                  JOIN {user_info_field} f ON d.fieldid = f.id
+                  JOIN {user} u ON d.userid = u.id
+                 WHERE f.shortname = :shortname AND u.deleted = 0";
+        $records = $DB->get_records_sql($sql, ['shortname' => self::PROFILE_FIELD_SHORTNAME]);
+        foreach ($records as $record) {
+            if (trim((string)$record->data) === $phone) {
+                return true;
+            }
+        }
+
+        // 2. Check standard phone1 field as fallback.
+        if ($DB->record_exists('user', ['phone1' => $phone, 'deleted' => 0])) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Create Moodle user account and immediately log them in.
      *
      * @param array $data User profile details.
@@ -439,6 +556,9 @@ class manager {
 
         $userid = user_create_user($user, false, false);
         $user->id = $userid;
+
+        // Save verified phone to custom profile field.
+        self::save_user_phone($userid, $phone);
 
         // Perform login.
         $userrecord = $DB->get_record('user', ['id' => $userid], '*', MUST_EXIST);

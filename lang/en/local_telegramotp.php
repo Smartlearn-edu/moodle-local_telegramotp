@@ -111,3 +111,8 @@ $string['privacy:metadata:requests:timecreated'] = 'Timestamp when the OTP reque
 $string['privacy:metadata:requests:timemodified'] = 'Timestamp when the OTP request was last updated.';
 $string['privacy:metadata:telegram_gateway'] = 'Phone numbers are sent to Telegram Gateway API to deliver verification codes.';
 $string['privacy:metadata:telegram_gateway:phone_number'] = 'The phone number sent to Telegram Gateway.';
+
+// Custom user profile field strings.
+$string['profile_category_name'] = 'Telegram';
+$string['profile_field_name'] = 'Telegram Phone Number';
+$string['profile_field_desc'] = 'Verified phone number for Telegram notifications and OTP verification.';

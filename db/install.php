@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
- * Plugin version and other meta-data are defined here.
+ * Installation post-actions for local_telegramotp.
  *
  * @package     local_telegramotp
  * @copyright   2026 Mohammad Nabil <mohammad@smartlearn.education>
@@ -24,8 +24,12 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->component = 'local_telegramotp';
-$plugin->version   = 2026100801;
-$plugin->requires  = 2024100700; // Moodle 4.5+ and 5.x.
-$plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = 'v1.1.0';
+/**
+ * Perform post-install actions for local_telegramotp.
+ *
+ * @return bool True on success.
+ */
+function xmldb_local_telegramotp_install(): bool {
+    \local_telegramotp\manager::ensure_profile_field();
+    return true;
+}

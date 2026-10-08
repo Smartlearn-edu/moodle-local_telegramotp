@@ -111,3 +111,8 @@ $string['privacy:metadata:requests:timecreated'] = 'تاريخ ووقت إنشا
 $string['privacy:metadata:requests:timemodified'] = 'تاريخ ووقت آخر تحديث لطلب التحقق.';
 $string['privacy:metadata:telegram_gateway'] = 'يتم إرسال أرقام الهواتف إلى بوابة تيليجرام لتسليم رموز التحقق.';
 $string['privacy:metadata:telegram_gateway:phone_number'] = 'رقم الهاتف المرسل إلى بوابة تيليجرام.';
+
+// Custom user profile field strings.
+$string['profile_category_name'] = 'تيليجرام';
+$string['profile_field_name'] = 'رقم هاتف تيليجرام';
+$string['profile_field_desc'] = 'رقم الهاتف المعتمد لإشعارات تيليجرام والتحقق السريع.';

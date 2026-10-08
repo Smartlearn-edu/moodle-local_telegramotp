@@ -61,5 +61,10 @@ function xmldb_local_telegramotp_upgrade(int $oldversion): bool {
         upgrade_plugin_savepoint(true, 2026100701, 'local', 'telegramotp');
     }
 
+    if ($oldversion < 2026100801) {
+        \local_telegramotp\manager::ensure_profile_field();
+        upgrade_plugin_savepoint(true, 2026100801, 'local', 'telegramotp');
+    }
+
     return true;
 }
